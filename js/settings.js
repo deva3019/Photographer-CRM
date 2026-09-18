@@ -40,6 +40,7 @@ renderNav("desktop-nav");
 renderNav("mobile-nav");
 
 document.getElementById("mobile-menu-btn")?.addEventListener("click", () => document.getElementById("mobile-drawer").classList.remove("hidden"));
+document.getElementById("mobile-close-btn")?.addEventListener("click", () => document.getElementById("mobile-drawer").classList.add("hidden"));
 
 function showToast(msg, isError = false) {
   const toast = document.getElementById("toast");
@@ -53,17 +54,18 @@ function showToast(msg, isError = false) {
   }, 3000);
 }
 
-// ----- Auth Check -----
 onAuthStateChanged(auth, (user) => {
   if (!user) window.location.href = "login.html";
 });
 
+
 // ==========================================
-// 1. DATA EXPORT (BACKUP)
+// 1. DATA EXPORT (ZIP + EXCEL CHUNKS + JSON)
 // ==========================================
 const btnExport = document.getElementById("btn-export-data");
 const exportSpinner = document.getElementById("export-spinner");
-const collectionsList = ["events", "clients", "crew", "production"]; // Define what to backup
+const collectionsList = ["events", "clients", "crew", "production"]; 
+const EXCEL_ROW_LIMIT = 50000; // Chunk limit for Excel performance
 
 btnExport.addEventListener("click", async () => {
   btnExport.disabled = true;
@@ -71,40 +73,86 @@ btnExport.addEventListener("click", async () => {
   
   try {
     const backupData = {
-      _metadata: { exportedAt: new Date().toISOString(), version: "2.0" }
+      _metadata: { exportedAt: new Date().toISOString(), version: "2.1" }
     };
 
-    // Fetch all collections
+    // 1. Fetch all collections from Firestore
     for (const colName of collectionsList) {
       const snap = await getDocs(collection(db, colName));
       backupData[colName] = snap.docs.map(d => ({ _id: d.id, ...d.data() }));
     }
 
-    // Create Download
-    const dataStr = JSON.stringify(backupData, null, 2);
-    const blob = new Blob([dataStr], { type: "application/json" });
-    const url = URL.createObjectURL(blob);
+    // Initialize JSZip
+    const zip = new JSZip();
+    
+    // Add the raw JSON file for system restores
+    zip.file("System_Restore_Data.json", JSON.stringify(backupData, null, 2));
+
+    // 2. Convert Data to Excel Chunks
+    for (const colName of collectionsList) {
+      const dataArray = backupData[colName];
+      if (!dataArray || dataArray.length === 0) continue;
+
+      // Flatten objects (like services {}) for Excel readability
+      const flatData = dataArray.map(item => {
+        let flatItem = { ...item };
+        if (flatItem.services) {
+          flatItem.services = Object.keys(flatItem.services).filter(k => flatItem.services[k]).join(", ");
+        }
+        if (Array.isArray(flatItem.assignedCrew)) {
+          flatItem.assignedCrew = flatItem.assignedCrew.join(" | ");
+        }
+        return flatItem;
+      });
+
+      // Split into chunks if data exceeds EXCEL_ROW_LIMIT
+      const chunks = [];
+      for (let i = 0; i < flatData.length; i += EXCEL_ROW_LIMIT) {
+        chunks.push(flatData.slice(i, i + EXCEL_ROW_LIMIT));
+      }
+
+      // Generate .xlsx files for each chunk using SheetJS
+      chunks.forEach((chunk, index) => {
+        const worksheet = XLSX.utils.json_to_sheet(chunk);
+        const workbook = XLSX.utils.book_new();
+        XLSX.utils.book_append_sheet(workbook, worksheet, colName);
+        
+        // Write to array buffer
+        const excelBuffer = XLSX.write(workbook, { bookType: 'xlsx', type: 'array' });
+        
+        // Naming: "Events.xlsx" or "Events_Part_2.xlsx"
+        const fileName = chunks.length > 1 ? `${colName.charAt(0).toUpperCase() + colName.slice(1)}_Part_${index + 1}.xlsx` : `${colName.charAt(0).toUpperCase() + colName.slice(1)}.xlsx`;
+        
+        // Add to Zip
+        zip.file(fileName, excelBuffer);
+      });
+    }
+
+    // 3. Generate ZIP and Trigger Download
+    const zipBlob = await zip.generateAsync({ type: "blob" });
+    const url = URL.createObjectURL(zipBlob);
     
     const a = document.createElement("a");
     a.href = url;
-    a.download = `Memories_Backup_${new Date().toISOString().split('T')[0]}.json`;
+    a.download = `Memories_Studio_Backup_${new Date().toISOString().split('T')[0]}.zip`;
     document.body.appendChild(a);
     a.click();
     document.body.removeChild(a);
     URL.revokeObjectURL(url);
 
-    showToast("Backup downloaded successfully!");
+    showToast("ZIP & Excel Download Complete!");
   } catch (err) {
     console.error(err);
-    showToast("Error generating backup.", true);
+    showToast("Error generating Excel backup.", true);
   } finally {
     btnExport.disabled = false;
     exportSpinner.classList.add("hidden");
   }
 });
 
+
 // ==========================================
-// 2. DATA IMPORT (RESTORE)
+// 2. DATA IMPORT (RESTORE JSON ONLY)
 // ==========================================
 const btnTriggerImport = document.getElementById("btn-trigger-import");
 const importFileInput = document.getElementById("import-file");
@@ -128,8 +176,6 @@ importFileInput.addEventListener("change", (e) => {
 
     try {
       const data = JSON.parse(event.target.result);
-      
-      // Use Firestore Batch to safely upload multiple documents
       const batch = writeBatch(db);
       let operationCount = 0;
 
@@ -137,9 +183,7 @@ importFileInput.addEventListener("change", (e) => {
         if (data[colName] && Array.isArray(data[colName])) {
           data[colName].forEach(docData => {
             const docId = docData._id;
-            delete docData._id; // Remove the artificial ID before saving
-            
-            // Re-construct Timestamp objects if needed (simple fallback for now)
+            delete docData._id; 
             const ref = docId ? doc(db, colName, docId) : doc(collection(db, colName));
             batch.set(ref, docData, { merge: true });
             operationCount++;
@@ -176,7 +220,6 @@ const btnClearViewer = document.getElementById("btn-clear-viewer");
 const viewerTabs = document.getElementById("viewer-tabs");
 const viewerTables = document.getElementById("viewer-tables-container");
 
-// Drag & Drop effects
 viewerArea.addEventListener("click", () => viewerInput.click());
 viewerArea.addEventListener("dragover", (e) => { e.preventDefault(); viewerArea.classList.add("drag-active"); });
 viewerArea.addEventListener("dragleave", () => viewerArea.classList.remove("drag-active"));
@@ -213,13 +256,12 @@ function renderViewer(data) {
   let firstValidKey = null;
 
   Object.keys(data).forEach(key => {
-    if (key === "_metadata") return; // Skip metadata
+    if (key === "_metadata") return; 
     const items = data[key];
     if (!Array.isArray(items) || items.length === 0) return;
 
     if (!firstValidKey) firstValidKey = key;
 
-    // Create Tab
     const tab = document.createElement("button");
     tab.className = `px-4 py-2 text-xs font-semibold uppercase tracking-wider border-b-2 transition-colors ${key === firstValidKey ? 'border-indigo-600 text-indigo-600' : 'border-transparent text-gray-500 hover:text-gray-900'}`;
     tab.textContent = `${key} (${items.length})`;
@@ -227,8 +269,7 @@ function renderViewer(data) {
     tab.onclick = (e) => switchViewerTab(e.currentTarget, key);
     viewerTabs.appendChild(tab);
 
-    // Create Table HTML
-    const headers = Object.keys(items[0]).filter(k => k !== "_id" && !k.toLowerCase().includes("at")); // Filter out messy timestamps
+    const headers = Object.keys(items[0]).filter(k => k !== "_id" && !k.toLowerCase().includes("at")); 
     
     let tableHTML = `
       <div id="table-${key}" class="hidden json-table">
@@ -255,20 +296,16 @@ function renderViewer(data) {
     viewerTables.insertAdjacentHTML('beforeend', tableHTML);
   });
 
-  // Activate first tab
   if (firstValidKey) document.getElementById(`table-${firstValidKey}`).classList.remove("hidden");
 }
 
 function switchViewerTab(activeTabBtn, key) {
-  // Reset all tabs
   Array.from(viewerTabs.children).forEach(btn => {
     btn.classList.remove('border-indigo-600', 'text-indigo-600');
     btn.classList.add('border-transparent', 'text-gray-500');
   });
-  // Hide all tables
   Array.from(viewerTables.children).forEach(table => table.classList.add('hidden'));
 
-  // Activate clicked
   activeTabBtn.classList.add('border-indigo-600', 'text-indigo-600');
   activeTabBtn.classList.remove('border-transparent', 'text-gray-500');
   document.getElementById(`table-${key}`).classList.remove("hidden");
