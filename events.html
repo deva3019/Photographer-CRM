@@ -1,0 +1,540 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0" />
+<title>Events — Memories Photography</title>
+<link rel="icon" type="image/png" href="assets/fav.png" />
+<script src="https://cdn.tailwindcss.com"></script>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=Playfair+Display:wght@600;700&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="css/style.css" />
+<script>tailwind.config = { theme: { extend: { maxWidth: { 'container': '1440px' } } } }</script>
+<style>
+  body { background-color: #fafafa; }
+  body::before {
+    content: ""; position: fixed; top: 0; left: 0; width: 100%; height: 100%;
+    background: url('assets/logo.png') center center no-repeat;
+    background-size: 40%; opacity: 0.06; mix-blend-mode: multiply; z-index: -1; pointer-events: none;
+  }
+  
+  .a4-paper {
+    background: white; 
+    box-shadow: 0 10px 40px rgba(0,0,0,0.1);
+    border: 1px solid #e5e5e5; 
+    max-width: 850px; 
+    margin: 0 auto;
+    position: relative;
+    overflow: hidden;
+  }
+  .invoice-watermark {
+    position: absolute; top: 50%; left: 50%; transform: translate(-50%, -50%);
+    width: 80%; height: 80%; background: url('assets/logo.png') center center no-repeat;
+    background-size: contain; opacity: 0.04; pointer-events: none; z-index: 0;
+  }
+  [contenteditable="true"] { outline: none; transition: background 0.2s; }
+  [contenteditable="true"]:hover { background: #f9fafb; border-radius: 4px; }
+  [contenteditable="true"]:focus { background: #f3f4f6; }
+
+  @media print {
+    @page { margin: 15mm; size: A4 portrait; }
+    body { background-color: white !important; }
+    body::before { display: none !important; } 
+    #app-wrapper, .bottom-nav, #mobile-drawer, #toast, #modal-event-form, #modal-event-details, #modal-confirm-delete { display: none !important; }
+    #modal-invoice { position: static !important; background: transparent !important; overflow: visible !important; display: block !important; }
+    .modal-backdrop, #invoice-toolbar { display: none !important; }
+    .a4-paper { margin: 0 !important; box-shadow: none !important; border: none !important; width: 100% !important; max-width: none !important; }
+    input, textarea, [contenteditable="true"] { border: none !important; background: transparent !important; box-shadow: none !important; resize: none !important; }
+    * { -webkit-print-color-adjust: exact !important; print-color-adjust: exact !important; }
+  }
+</style>
+</head>
+<body class="min-h-screen">
+
+<div id="app-wrapper" class="flex min-h-screen w-full relative z-0">
+  
+  <aside class="hidden lg:flex lg:flex-col w-56 shrink-0 border-r border-gray-200 bg-white/80 backdrop-blur h-screen sticky top-0">
+    <div class="flex items-center gap-2 px-5 h-14 border-b border-gray-200 shrink-0">
+      <img src="assets/fav.png" alt="Memories" class="h-6 w-auto" onerror="this.style.display='none'"/>
+      <span class="font-display text-base font-semibold tracking-tight">Memories</span>
+    </div>
+    <nav id="desktop-nav" class="flex-1 overflow-y-auto px-3 py-3 space-y-0.5"></nav>
+    <div class="px-4 py-3 border-t border-gray-200 flex items-center justify-between shrink-0 bg-white/90">
+      <div class="flex items-center gap-2 min-w-0">
+        <img src="assets/fav.png" class="h-8 w-8 rounded-full border border-gray-200 object-cover shrink-0" onerror="this.src='https://ui-avatars.com/api/?name=Studio+Owner&background=0D8ABC&color=fff'"/>
+        <div class="min-w-0">
+          <p class="text-xs font-medium truncate">Studio Owner</p>
+          <p class="text-[11px] text-gray-500 truncate">Coimbatore</p>
+        </div>
+      </div>
+    </div>
+  </aside>
+
+  <div class="flex-1 min-w-0 flex flex-col">
+    <header class="sticky top-0 z-20 bg-white/80 backdrop-blur border-b border-gray-200 h-14 flex items-center px-4 sm:px-6 gap-4">
+      <button id="mobile-menu-btn" class="lg:hidden p-2 -ml-2 rounded-lg hover:bg-gray-100"><svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><line x1="3" y1="6" x2="21" y2="6"/><line x1="3" y1="12" x2="21" y2="12"/><line x1="3" y1="18" x2="21" y2="18"/></svg></button>
+      <h1 class="font-display text-base sm:text-lg font-semibold truncate flex-1">Event Management</h1>
+    </header>
+
+    <main class="flex-1 w-full max-w-container mx-auto px-4 sm:px-6 py-5 pb-24 lg:pb-6 space-y-4">
+      <div class="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3">
+        <div>
+          <h2 class="font-display text-xl sm:text-2xl font-semibold">Events</h2>
+          <p class="text-xs text-gray-500 mt-0.5">Manage photoshoots, weddings, bookings & schedules</p>
+        </div>
+        <button id="btn-open-create-event" class="btn btn-primary self-start sm:self-auto shadow-md">
+          <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/></svg>
+          <span>Add Event</span>
+        </button>
+      </div>
+
+      <!-- Filter Toolbar -->
+      <div class="panel bg-white/95 backdrop-blur shadow-sm p-3 sm:p-4 flex flex-col md:flex-row gap-3 items-stretch md:items-center justify-between">
+        <div class="relative flex-1">
+          <span class="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none text-gray-400">
+            <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="11" cy="11" r="8"/><line x1="21" y1="21" x2="16.65" y2="16.65"/></svg>
+          </span>
+          <input type="text" id="event-search-input" placeholder="Search event, client..." class="input-control pl-9 w-full" />
+        </div>
+        
+        <!-- NEW: Date Range Filters -->
+        <div class="flex flex-wrap sm:flex-nowrap gap-2 items-center">
+          <div class="flex items-center gap-1 bg-gray-50 border border-gray-200 rounded-lg px-2">
+            <span class="text-[10px] text-gray-500 font-semibold uppercase tracking-wide">From</span>
+            <input type="date" id="event-filter-from" class="bg-transparent border-none text-xs focus:ring-0 w-28 sm:w-auto" title="From Date" />
+            <span class="text-gray-300">|</span>
+            <span class="text-[10px] text-gray-500 font-semibold uppercase tracking-wide">To</span>
+            <input type="date" id="event-filter-to" class="bg-transparent border-none text-xs focus:ring-0 w-28 sm:w-auto" title="To Date" />
+          </div>
+
+          <select id="event-filter-status" class="input-control select-control text-xs w-full sm:w-auto">
+            <option value="all">All Statuses</option>
+            <option value="Enquiry">Enquiry</option>
+            <option value="Tentative">Tentative</option>
+            <option value="Confirmed">Confirmed</option>
+            <option value="Completed">Completed</option>
+          </select>
+          <input list="dl-event-types" id="event-filter-type" class="input-control text-xs w-full sm:w-32" placeholder="Event Type..." />
+        </div>
+      </div>
+
+      <!-- Table -->
+      <div class="panel bg-white/95 backdrop-blur shadow-sm overflow-hidden">
+        <div class="overflow-x-auto">
+          <table class="w-full text-left border-collapse" id="events-table">
+            <thead>
+              <tr class="border-b border-gray-200 bg-gray-50/50 text-[11px] font-semibold tracking-wider text-gray-500 uppercase">
+                <th class="py-3 px-4">Event & Client</th>
+                <th class="py-3 px-4">Type</th>
+                <th class="py-3 px-4">Date & Time</th>
+                <th class="py-3 px-4">Location</th>
+                <th class="py-3 px-4">Status</th>
+                <th class="py-3 px-4 text-right">Payment</th>
+                <th class="py-3 px-4 text-right">Actions</th>
+              </tr>
+            </thead>
+            <tbody id="events-list-tbody" class="divide-y divide-gray-100 text-sm"></tbody>
+          </table>
+        </div>
+        <div id="events-empty-state" class="hidden p-8 text-center text-xs text-gray-500">No events found matching your search.</div>
+      </div>
+    </main>
+  </div>
+</div>
+
+<nav class="bottom-nav lg:hidden fixed bottom-0 inset-x-0 bg-white border-t border-gray-200 flex justify-around py-2 z-30">
+  <a href="dashboard.html" class="flex flex-col items-center gap-1 px-3 py-1 text-gray-400 hover:text-black"><svg width="18" height="18" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path d="M3 12l9-9 9 9"/><path d="M9 21V12h6v9"/></svg><span class="text-[10px] font-medium">Home</span></a>
+  <a href="events.html" class="flex flex-col items-center gap-1 px-3 py-1 text-black"><svg width="18" height="18" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><rect x="3" y="4" width="18" height="18" rx="2"/><line x1="16" y1="2" x2="16" y2="6"/><line x1="8" y1="2" x2="8" y2="6"/></svg><span class="text-[10px] font-medium">Events</span></a>
+  <a href="clients.html" class="flex flex-col items-center gap-1 px-3 py-1 text-gray-400 hover:text-black"><svg width="18" height="18" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path d="M17 21v-2a4 4 0 00-4-4H5a4 4 0 00-4 4v2"/><circle cx="9" cy="7" r="4"/></svg><span class="text-[10px] font-medium">Clients</span></a>
+</nav>
+
+<!-- ================= MODAL: ADD / EDIT EVENT ================= -->
+<div id="modal-event-form" class="fixed inset-0 z-50 hidden">
+  <div class="modal-backdrop absolute inset-0 bg-black/50 backdrop-blur-xs id-close-form"></div>
+  <div class="relative w-full h-full flex items-center justify-center p-3 sm:p-6 overflow-y-auto">
+    <div class="panel bg-white w-full max-w-4xl my-auto shadow-2xl rounded-xl max-h-[92vh] flex flex-col z-10">
+      
+      <div class="px-5 py-4 border-b border-gray-200 flex items-center justify-between shrink-0 bg-gray-50/50 rounded-t-xl">
+        <div>
+          <h3 id="form-modal-title" class="font-display text-base sm:text-lg font-semibold text-gray-900">Add New Event</h3>
+          <p class="text-xs text-gray-500">Configure event, client, dynamic services & crew</p>
+        </div>
+        <button class="p-2 rounded-lg hover:bg-gray-200 text-gray-500 hover:text-black transition-colors id-close-form">
+          <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg>
+        </button>
+      </div>
+
+      <form id="event-form" class="p-5 overflow-y-auto space-y-6 text-xs flex-1">
+        <input type="hidden" id="form-event-id" value="" />
+
+        <div>
+          <p class="text-[11px] uppercase tracking-widest font-bold text-gray-400 mb-3 border-b border-gray-100 pb-1">1. Event Details</p>
+          <div class="grid grid-cols-1 md:grid-cols-3 gap-4">
+            <div class="md:col-span-2">
+              <label class="block font-medium mb-1 text-gray-700">Event Title *</label>
+              <input type="text" id="form-event-name" class="input-control w-full font-medium" placeholder="e.g. Arun & Divya Wedding" required />
+            </div>
+            <div>
+              <label class="block font-medium mb-1 text-gray-700">Event Type *</label>
+              <input list="dl-event-types" id="form-event-type" class="input-control w-full" placeholder="Select or type..." required />
+              <datalist id="dl-event-types">
+                <option value="Wedding"></option>
+                <option value="Engagement"></option>
+                <option value="Reception"></option>
+                <option value="Pre-Wedding"></option>
+                <option value="Birthday"></option>
+                <option value="Baby Shower"></option>
+              </datalist>
+            </div>
+            <div>
+              <label class="block font-medium mb-1 text-gray-700">Date *</label>
+              <input type="date" id="form-event-date" class="input-control w-full" required />
+            </div>
+            <div>
+              <label class="block font-medium mb-1 text-gray-700">Start Time</label>
+              <input type="time" id="form-event-start-time" class="input-control w-full" />
+            </div>
+            <div>
+              <label class="block font-medium mb-1 text-gray-700">End Time</label>
+              <input type="time" id="form-event-end-time" class="input-control w-full" />
+            </div>
+            <div class="md:col-span-2">
+              <label class="block font-medium mb-1 text-gray-700">Venue *</label>
+              <input type="text" id="form-event-venue" class="input-control w-full" placeholder="e.g. Green Meadows Hall" required />
+            </div>
+            <div>
+              <label class="block font-medium mb-1 text-gray-700">Location / City *</label>
+              <input type="text" id="form-event-location" class="input-control w-full" placeholder="e.g. Coimbatore" required />
+            </div>
+          </div>
+        </div>
+
+        <div>
+          <p class="text-[11px] uppercase tracking-widest font-bold text-gray-400 mb-3 border-b border-gray-100 pb-1">2. Client & Contact</p>
+          <div class="grid grid-cols-1 md:grid-cols-3 gap-4 bg-gray-50 p-3 rounded-lg border border-gray-100">
+            <div class="md:col-span-3 flex flex-col sm:flex-row gap-4">
+              <div class="flex-1">
+                <label class="block font-medium mb-1 text-gray-700">Select Existing Client</label>
+                <select id="form-client-select" class="input-control select-control w-full font-medium">
+                  <option value="">-- Choose Client from Database --</option>
+                </select>
+              </div>
+              <div class="flex items-end justify-center py-2 text-gray-400 font-semibold text-xs">- OR -</div>
+              <div class="flex-1">
+                <label class="block font-medium mb-1 text-gray-700">Custom Client Name *</label>
+                <input type="text" id="form-client-name" class="input-control w-full" placeholder="Enter name manually" required />
+              </div>
+            </div>
+            <div>
+              <label class="block font-medium mb-1 text-gray-700">Phone Number *</label>
+              <input type="tel" id="form-client-phone" class="input-control w-full" placeholder="+91 98765 43210" required />
+            </div>
+            <div class="md:col-span-2">
+              <label class="block font-medium mb-1 text-gray-700">Email Address</label>
+              <input type="email" id="form-client-email" class="input-control w-full" placeholder="client@example.com" />
+            </div>
+          </div>
+        </div>
+
+        <div>
+          <p class="text-[11px] uppercase tracking-widest font-bold text-gray-400 mb-3 border-b border-gray-100 pb-1">3. Package & Services</p>
+          <div class="grid grid-cols-1 md:grid-cols-2 gap-4 mb-3">
+            <div>
+              <label class="block font-medium mb-1 text-gray-700">Package Name</label>
+              <input type="text" id="form-package-name" class="input-control w-full" placeholder="e.g. Platinum Wedding Package" />
+            </div>
+            <div>
+              <label class="block font-medium mb-1 text-gray-700">Status *</label>
+              <select id="form-event-status" class="input-control select-control w-full bg-blue-50 font-semibold" required>
+                <option value="Enquiry">Enquiry</option>
+                <option value="Tentative">Tentative</option>
+                <option value="Confirmed" selected>Confirmed</option>
+                <option value="Completed">Completed</option>
+                <option value="Cancelled">Cancelled</option>
+              </select>
+            </div>
+          </div>
+          <label class="block font-medium mb-2 text-gray-700">Included Services</label>
+          <div class="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-4 gap-2 mb-3">
+            <label class="checkbox-container"><input type="checkbox" id="svc-photography" checked /><span>Traditional Photo</span></label>
+            <label class="checkbox-container"><input type="checkbox" id="svc-videography" checked /><span>Traditional Video</span></label>
+            <label class="checkbox-container"><input type="checkbox" id="svc-candid" /><span>Candid Photo</span></label>
+            <label class="checkbox-container"><input type="checkbox" id="svc-cinematic" /><span>Cinematic Video</span></label>
+            <label class="checkbox-container"><input type="checkbox" id="svc-drone" /><span>Drone / Helicam</span></label>
+            <label class="checkbox-container"><input type="checkbox" id="svc-livestreaming" /><span>Live Streaming</span></label>
+            <label class="checkbox-container"><input type="checkbox" id="svc-album" /><span>Premium Album</span></label>
+            <label class="checkbox-container"><input type="checkbox" id="svc-outdoor" /><span>Outdoor Shoot</span></label>
+          </div>
+          <div>
+            <label class="block font-medium mb-1 text-gray-700">Extra / Custom Services</label>
+            <input type="text" id="form-extra-services" class="input-control w-full" placeholder="e.g. LED Wall, Instant Prints, 360 Photobooth..." />
+          </div>
+        </div>
+
+        <div>
+          <p class="text-[11px] uppercase tracking-widest font-bold text-gray-400 mb-3 border-b border-gray-100 pb-1">4. Crew & Financials</p>
+          <div class="mb-4">
+            <label class="block font-medium mb-2 text-gray-700">Assign Crew Members (Database)</label>
+            <div id="dynamic-crew-list" class="grid grid-cols-2 sm:grid-cols-3 gap-2 bg-gray-50 p-3 rounded-lg border border-gray-100 max-h-[120px] overflow-y-auto">
+              <!-- Rendered by JS -->
+            </div>
+          </div>
+
+          <div class="grid grid-cols-1 sm:grid-cols-3 gap-4">
+            <div>
+              <label class="block font-medium mb-1 text-gray-700">Total Amount (₹) *</label>
+              <input type="number" id="form-total-amount" class="input-control w-full text-base font-bold" placeholder="0" min="0" required />
+            </div>
+            <!-- NEW: Payment Mode included directly next to Advance -->
+            <div class="sm:col-span-2 grid grid-cols-2 gap-2">
+              <div>
+                <label class="block font-medium mb-1 text-gray-700">Advance Paid (₹)</label>
+                <input type="number" id="form-advance" class="input-control w-full text-emerald-700 font-semibold" placeholder="0" min="0" value="0" />
+              </div>
+              <div>
+                <label class="block font-medium mb-1 text-gray-700">Payment Mode</label>
+                <select id="form-payment-mode" class="input-control select-control w-full font-semibold">
+                  <option value="Cash">Cash</option>
+                  <option value="UPI">UPI</option>
+                  <option value="Bank Transfer">Bank Transfer</option>
+                </select>
+              </div>
+            </div>
+            <div class="sm:col-span-3">
+              <label class="block font-medium mb-1 text-gray-700">Balance Due (₹)</label>
+              <input type="number" id="form-balance" class="input-control w-full bg-gray-100 font-bold text-amber-700" placeholder="0" readonly />
+            </div>
+          </div>
+        </div>
+
+        <div>
+          <p class="text-[11px] uppercase tracking-widest font-bold text-gray-400 mb-3 border-b border-gray-100 pb-1">5. Scheduling & Notes</p>
+          <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
+            <div>
+              <label class="block font-medium mb-1 text-gray-700">Event Timeline</label>
+              <textarea id="form-timeline" rows="3" class="input-control w-full" placeholder="e.g. 06:00 AM - Bride Prep"></textarea>
+            </div>
+            <div>
+              <label class="block font-medium mb-1 text-gray-700">Internal Notes</label>
+              <textarea id="form-notes" rows="3" class="input-control w-full" placeholder="Lighting setup notes..."></textarea>
+            </div>
+          </div>
+        </div>
+
+        <div id="form-error-msg" class="hidden text-xs text-red-600 bg-red-50 p-3 rounded-lg border border-red-200"></div>
+
+        <div class="pt-4 border-t border-gray-200 flex items-center justify-end gap-3 sticky bottom-0 bg-white pb-2">
+          <button type="button" class="btn btn-secondary id-close-form px-5 py-2">Cancel</button>
+          <button type="submit" id="btn-save-event" class="btn btn-primary px-6 py-2 shadow-lg">
+            <span id="btn-save-spinner" class="hidden animate-spin h-4 w-4 border-2 border-white border-t-transparent rounded-full mr-2"></span>
+            <span id="btn-save-text">Save Event</span>
+          </button>
+        </div>
+      </form>
+    </div>
+  </div>
+</div>
+
+<!-- ================= MODAL: EVENT DETAILS (RESPONSIVE FIX) ================= -->
+<div id="modal-event-details" class="fixed inset-0 z-50 hidden">
+  <div class="modal-backdrop absolute inset-0 bg-black/50 backdrop-blur-xs id-close-details"></div>
+  
+  <!-- Changed padding to p-2 sm:p-6 for mobile bounds -->
+  <div class="relative w-full h-full flex items-center justify-center p-2 sm:p-6 overflow-hidden">
+    
+    <!-- Added max-w-full and min-w-0 to prevent flex blowing out container -->
+    <div class="panel bg-white w-full max-w-3xl my-auto shadow-2xl rounded-xl max-h-[95vh] flex flex-col z-10 min-w-0">
+      
+      <div class="p-4 sm:px-5 sm:py-4 border-b border-gray-200 flex flex-col sm:flex-row sm:items-start justify-between shrink-0 bg-gray-50/50 rounded-t-xl gap-3">
+        <div class="min-w-0">
+          <div class="flex items-center gap-2 sm:gap-3 flex-wrap">
+            <h3 id="det-event-name" class="font-display text-lg sm:text-xl font-bold text-gray-900 truncate break-words max-w-full">—</h3>
+            <span id="det-status-badge" class="shrink-0"></span>
+          </div>
+          <p class="text-[10px] sm:text-xs text-gray-500 mt-1 font-mono truncate" id="det-event-id">ID: —</p>
+        </div>
+        <div class="flex items-center gap-2 shrink-0 self-end sm:self-auto">
+          <button id="btn-open-invoice" class="btn btn-primary text-xs flex items-center gap-1 bg-emerald-700 hover:bg-emerald-800 border-emerald-700 px-3 py-1.5">
+            Invoice
+          </button>
+          <button class="p-2 rounded-lg hover:bg-gray-200 text-gray-500 hover:text-black transition-colors id-close-details">
+            <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg>
+          </button>
+        </div>
+      </div>
+
+      <!-- Scrollable Body with break-words to prevent horizontal scrolling -->
+      <div class="p-4 sm:p-5 overflow-y-auto space-y-5 text-xs flex-1 min-w-0 break-words">
+        
+        <div class="grid grid-cols-1 sm:grid-cols-2 gap-3 sm:gap-4">
+          <div class="panel p-3 sm:p-4 bg-gray-50/50 border-gray-100 min-w-0">
+            <p class="text-[9px] sm:text-[10px] uppercase tracking-widest font-bold text-gray-400 mb-2">Client Details</p>
+            <p class="font-bold text-sm text-gray-900 truncate" id="det-client-name">—</p>
+            <p class="text-gray-600 mt-1 font-medium truncate" id="det-client-phone">—</p>
+            <p class="text-gray-500 truncate" id="det-client-email">—</p>
+          </div>
+          <div class="panel p-3 sm:p-4 bg-gray-50/50 border-gray-100 min-w-0">
+            <p class="text-[9px] sm:text-[10px] uppercase tracking-widest font-bold text-gray-400 mb-2">Schedule & Venue</p>
+            <p class="font-bold text-sm text-gray-900 truncate" id="det-date-time">—</p>
+            <p class="text-gray-600 mt-1 font-medium truncate" id="det-venue">—</p>
+            <p class="text-gray-500 truncate" id="det-location">—</p>
+          </div>
+        </div>
+
+        <div class="min-w-0">
+          <p class="text-[9px] sm:text-[10px] uppercase tracking-widest font-bold text-gray-400 mb-2">Package & Services</p>
+          <div class="p-3 sm:p-4 border border-gray-200 rounded-lg shadow-sm bg-white">
+            <div class="flex justify-between items-center border-b border-gray-100 pb-2 mb-2">
+              <span class="font-bold text-gray-900 text-sm truncate" id="det-package-name">—</span>
+            </div>
+            <div id="det-services-pills" class="flex flex-wrap gap-2 pt-1"></div>
+            <p id="det-extra-services" class="mt-3 text-gray-600 italic border-l-2 border-gray-300 pl-2 hidden break-words"></p>
+          </div>
+        </div>
+
+        <div class="grid grid-cols-1 sm:grid-cols-2 gap-3 sm:gap-4 min-w-0">
+          <div class="min-w-0">
+            <p class="text-[9px] sm:text-[10px] uppercase tracking-widest font-bold text-gray-400 mb-2">Assigned Crew</p>
+            <div class="p-3 bg-gray-50 rounded-lg text-gray-800 font-medium min-h-[60px] break-words" id="det-crew">—</div>
+          </div>
+          <div class="min-w-0">
+            <p class="text-[9px] sm:text-[10px] uppercase tracking-widest font-bold text-gray-400 mb-2">Financial Summary</p>
+            <div class="grid grid-cols-3 gap-2">
+              <div class="p-2 border border-gray-200 rounded-lg text-center bg-white shadow-sm flex flex-col justify-center">
+                <span class="text-gray-400 text-[8px] sm:text-[9px] uppercase tracking-wider font-bold block">Total</span>
+                <span class="text-xs font-bold mt-1 block truncate" id="det-total">₹0</span>
+              </div>
+              <!-- NEW: Payment mode displayed here -->
+              <div class="p-2 border border-gray-200 rounded-lg text-center bg-white shadow-sm flex flex-col justify-center">
+                <span class="text-gray-400 text-[8px] sm:text-[9px] uppercase tracking-wider font-bold block">Adv <span id="det-pay-mode" class="text-emerald-600 ml-0.5 tracking-normal"></span></span>
+                <span class="text-xs font-bold text-emerald-700 mt-1 block truncate" id="det-advance">₹0</span>
+              </div>
+              <div class="p-2 border border-amber-200 bg-amber-50 rounded-lg text-center shadow-sm flex flex-col justify-center">
+                <span class="text-amber-700/70 text-[8px] sm:text-[9px] uppercase tracking-wider font-bold block">Balance</span>
+                <span class="text-xs font-bold text-amber-700 mt-1 block truncate" id="det-balance">₹0</span>
+              </div>
+            </div>
+          </div>
+        </div>
+
+        <div class="grid grid-cols-1 sm:grid-cols-2 gap-3 sm:gap-4 min-w-0">
+          <div class="min-w-0">
+            <p class="text-[9px] sm:text-[10px] uppercase tracking-widest font-bold text-gray-400 mb-2">Timeline Schedule</p>
+            <div class="p-3 bg-white border border-gray-200 rounded-lg text-gray-700 min-h-[80px] whitespace-pre-wrap break-words" id="det-timeline">—</div>
+          </div>
+          <div class="min-w-0">
+            <p class="text-[9px] sm:text-[10px] uppercase tracking-widest font-bold text-gray-400 mb-2">Internal Notes</p>
+            <div class="p-3 bg-yellow-50/50 border border-yellow-100 rounded-lg text-gray-800 min-h-[80px] whitespace-pre-wrap break-words" id="det-notes">—</div>
+          </div>
+        </div>
+      </div>
+
+      <div class="px-4 py-3 sm:px-5 sm:py-4 border-t border-gray-200 flex items-center justify-between shrink-0 bg-gray-50/50 rounded-b-xl">
+        <button id="det-btn-delete" class="btn btn-danger text-xs px-3 sm:px-4">
+          <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="3 6 5 6 21 6"/><path d="M19 6v14a2 2 0 01-2 2H7a2 2 0 01-2-2V6m3 0V4a2 2 0 012-2h4a2 2 0 012 2v2"/></svg>
+          <span class="hidden sm:inline">Delete</span>
+        </button>
+        <button id="det-btn-edit" class="btn btn-secondary text-xs px-4 py-2 shadow-sm font-semibold border-gray-300">Edit Details</button>
+      </div>
+
+    </div>
+  </div>
+</div>
+
+<!-- INVOICE, CONFIRM DELETE, & TOAST MODALS REMAIN EXACTLY THE SAME BELOW -->
+<!-- (Paste the modal-invoice, modal-confirm-delete, and toast HTML blocks here if you want the full document, they are unchanged from my previous correct version) -->
+<div id="modal-invoice" class="fixed inset-0 z-[60] hidden overflow-y-auto bg-gray-900/90 backdrop-blur-sm">
+  <!-- Floating Toolbar (Hidden during Print) -->
+  <div id="invoice-toolbar" class="fixed top-0 inset-x-0 bg-white/90 backdrop-blur border-b border-gray-200 px-4 py-3 flex justify-between items-center z-[70] shadow-sm">
+    <div class="flex items-center gap-2">
+      <span class="font-semibold text-gray-800 text-xs tracking-wider uppercase bg-gray-100 px-2 py-1 rounded">Interactive Contract Editor</span>
+    </div>
+    <div class="flex gap-2">
+      <button class="btn btn-secondary text-xs py-1.5 px-4 id-close-invoice border-gray-300">Close</button>
+      <button onclick="window.print()" class="btn btn-secondary text-xs py-1.5 px-4 hidden sm:flex items-center gap-1 border-gray-300">
+        <svg width="14" height="14" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><polyline points="6 9 6 2 18 2 18 9"></polyline><path d="M6 18H4a2 2 0 0 1-2-2v-5a2 2 0 0 1 2-2h16a2 2 0 0 1 2 2v5a2 2 0 0 1-2 2h-2"></path><rect x="6" y="14" width="12" height="8"></rect></svg> Print PDF
+      </button>
+      <button id="btn-whatsapp-invoice" class="btn btn-primary bg-[#25D366] hover:bg-[#128C7E] border-none text-xs py-1.5 px-4 flex items-center gap-2 shadow-md text-white">
+        Send to Client
+      </button>
+    </div>
+  </div>
+
+  <div class="a4-paper mt-20 mb-10 text-[13px] text-gray-800 font-sans" id="invoice-print-area">
+    <div class="invoice-watermark"></div>
+    <div class="relative z-10 p-8 sm:p-12">
+      <!-- Top Header -->
+      <div class="text-center mb-6">
+        <h1 class="font-display text-2xl sm:text-3xl font-bold tracking-widest uppercase text-black">Memories Photography</h1>
+        <p class="text-[10px] sm:text-xs tracking-[0.3em] text-gray-500 uppercase mt-1">Coimbatore | Nagercoil</p>
+        <div class="mt-6 border-y-2 border-black py-2">
+          <h2 class="text-lg sm:text-xl font-bold tracking-widest uppercase">Booking Confirmation</h2>
+        </div>
+      </div>
+      <!-- Editable Package Header -->
+      <div class="text-center mb-8 bg-gray-50 p-4 border border-gray-200">
+        <div contenteditable="true" id="inv-package" class="font-bold text-sm sm:text-base uppercase text-gray-900 leading-snug">ELEGANT WEDDING PHOTOGRAPHY & VIDEOGRAPHY<br/>PLATINUM WEDDING PACKAGE</div>
+        <div class="mt-2 text-sm font-semibold flex items-center justify-center gap-1 flex-wrap">
+          <span contenteditable="true" id="inv-standard-rate">Standard Rate: ₹1,75,000</span>
+          <span class="text-gray-400 mx-2">|</span>
+          <span class="text-black bg-yellow-100 px-2">Special Package Rate: ₹</span><span contenteditable="true" id="inv-special-rate" class="text-black bg-yellow-100 pr-2 font-bold">1,45,000/-</span>
+        </div>
+      </div>
+      <!-- Event Schedule Dynamic Box -->
+      <h3 class="font-bold text-sm uppercase tracking-widest mb-3 bg-black text-white px-3 py-1 w-max">Event Schedule & Included Services</h3>
+      <div contenteditable="true" id="inv-event-schedule" class="mb-8 border border-gray-300 p-4 leading-relaxed space-y-4"></div>
+      
+      <!-- Deliverables Section -->
+      <h3 class="font-bold text-sm uppercase tracking-widest mb-3 bg-black text-white px-3 py-1 w-max">Deliverables & Print Media</h3>
+      <div contenteditable="true" id="inv-deliverables" class="mb-8 border border-gray-300 p-4 leading-relaxed text-xs">
+        <p class="font-bold uppercase text-gray-900 mb-1">Premium Album Magazines</p>
+        <ul class="list-disc pl-5 mb-3 text-gray-700">
+          <li>Engagement Album: 24x18 Size, up to 20 sheets (40 pages) featuring a premium Fully Glossy Finish.</li>
+          <li>Wedding & Reception Album: 24x18 Size, up to 70-80 sheets (160 pages) finished in a luxurious Fully Matte Finish.</li>
+        </ul>
+      </div>
+
+      <!-- Financial Summary -->
+      <div class="border-2 border-black p-5 bg-gray-50 mb-8 relative">
+        <p class="text-base font-bold uppercase tracking-widest mb-4 text-center border-b-2 border-black pb-2">Financial Summary</p>
+        <div class="flex justify-between items-center mb-3 font-semibold text-sm">
+          <span>Total Contract Package Value</span>
+          <span class="text-base">₹ <span contenteditable="true" id="inv-calc-total" class="font-bold px-1 border-b border-gray-300">1,45,000</span></span>
+        </div>
+        <div class="flex justify-between items-center mb-3 text-gray-700 border-b border-dashed border-gray-400 pb-3">
+          <span>Advance Deposit Received</span>
+          <div class="flex items-center">
+            <span class="mr-1 font-bold">- ₹</span>
+            <span contenteditable="true" id="inv-calc-advance" class="text-base font-bold text-gray-900 px-1 border-b border-gray-300">20,000</span>
+          </div>
+        </div>
+        <div class="flex justify-between items-center mt-4 font-bold text-lg">
+          <span>Remaining Balance Due</span>
+          <span class="text-black bg-yellow-100 px-2">₹ <span contenteditable="true" id="inv-calc-balance">1,25,000</span></span>
+        </div>
+      </div>
+      
+      <!-- Footer -->
+      <div class="pt-6 border-t-2 border-black grid grid-cols-2 gap-8 text-[11px] leading-relaxed">
+        <div>
+          <h4 class="font-bold text-sm uppercase text-black mb-2">Client</h4>
+          <p class="font-bold text-gray-800 uppercase" id="inv-foot-client-name">Ramyapriya & Vijaydiwakar</p>
+          <p class="text-gray-600 font-mono mt-0.5" id="inv-foot-client-phone">8072280850</p>
+        </div>
+        <div class="text-right">
+          <h4 class="font-bold text-sm uppercase text-black mb-2">Memories Photography</h4>
+          <p class="text-gray-800">Thondamuthur, Coimbatore-641109</p>
+          <p class="text-gray-800 font-mono mt-0.5">Mobile: +91 9944618752</p>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
+<!-- Toast -->
+<div id="toast" class="fixed bottom-5 right-5 z-[70] transform translate-y-16 opacity-0 transition-all duration-200 bg-black text-white text-xs py-2.5 px-4 rounded-lg shadow-lg flex items-center gap-2">
+  <span id="toast-message">Action successful</span>
+</div>
+
+<script type="module" src="js/events.js"></script>
+</body>
+</html>

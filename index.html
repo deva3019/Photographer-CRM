@@ -1,0 +1,229 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0" />
+<title>Memories Photography | Studio Portal</title>
+
+<!-- Favicon -->
+<link rel="icon" type="image/png" href="assets/fav.png" />
+
+<script src="https://cdn.tailwindcss.com"></script>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600&family=Playfair+Display:ital,wght@0,400;0,600;0,700;1,400&display=swap" rel="stylesheet">
+
+<script>
+  tailwind.config = {
+    theme: {
+      extend: {
+        fontFamily: {
+          sans: ['Inter', 'sans-serif'],
+          display: ['Playfair Display', 'serif'],
+        },
+        colors: {
+          brand: '#0a0a0a',   /* rich black background */
+          ink:   '#141414',   /* iris blade tone */
+          gold:  '#c9a227',   /* brass accent */
+          goldsoft: '#e8c766'
+        }
+      }
+    }
+  }
+</script>
+
+<style>
+  body {
+    -webkit-font-smoothing: antialiased;
+    -moz-osx-font-smoothing: grayscale;
+  }
+
+  /* Subtle grain texture overlay for a cinematic photography feel */
+  .bg-grain { position: relative; }
+  .bg-grain::before {
+    content: ""; position: absolute; inset: 0;
+    background-image: url("data:image/svg+xml,%3Csvg viewBox='0 0 200 200' xmlns='http://www.w3.org/2000/svg'%3E%3Cfilter id='noiseFilter'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.65' numOctaves='3' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23noiseFilter)' opacity='0.04'/%3E%3C/svg%3E");
+    pointer-events: none; z-index: 1;
+  }
+
+  /* Ambient sheen that drifts slowly behind everything */
+  .ambient-sweep {
+    position: fixed; inset: -20%;
+    background: linear-gradient(115deg, transparent 40%, rgba(201,162,39,0.05) 50%, transparent 60%);
+    pointer-events: none; z-index: 2; opacity: 0;
+  }
+
+  /* Intro iris-wipe overlay: a black field with a hole that grows from the centre,
+     built as an SVG mask so it works at any viewport ratio without JS timing. */
+  .intro-overlay-wrap {
+    position: fixed; inset: 0; z-index: 60; pointer-events: none;
+  }
+  .intro-overlay-wrap svg { width: 100%; height: 100%; display: block; }
+
+  /* Decorative diaphragm blades that retract away from centre as the iris opens */
+  .intro-blades {
+    position: fixed; top: 50%; left: 50%; z-index: 61; pointer-events: none;
+    width: 24vmin; height: 24vmin;
+    transform: translate(-50%, -50%);
+    clip-path: polygon(50% 0%, 93% 25%, 93% 75%, 50% 100%, 7% 75%, 7% 25%);
+    background: linear-gradient(160deg, #1f1f1f, #0d0d0d 70%);
+    box-shadow: 0 0 40px rgba(0,0,0,0.6) inset;
+  }
+
+  /* One-off flash pulse at the moment the iris fully opens */
+  .intro-flash {
+    position: fixed; inset: 0; z-index: 59; pointer-events: none; opacity: 0;
+    background: radial-gradient(circle at 50% 50%, rgba(232,199,102,0.55), transparent 55%);
+  }
+
+  @media (prefers-reduced-motion: no-preference) {
+    .intro-blades   { animation: bladeOpen 1.15s cubic-bezier(0.22, 0.9, 0.24, 1) 0.05s forwards; }
+    .intro-flash    { animation: flashPulse 0.7s ease-out 0.85s forwards; }
+    .intro-overlay-wrap { animation: overlayHide 0.01s linear 1.55s forwards; }
+
+    .site-header, .site-footer { opacity: 0; animation: fadeInUp 0.9s ease-out 1.6s forwards; }
+    .logo-tagline { opacity: 0; animation: fadeInUp 0.9s ease-out 1.95s forwards; }
+    .logo-frame   { animation: logoSettle 1.8s cubic-bezier(0.16,1,0.3,1) forwards; }
+    .ambient-sweep{ animation: sweepDrift 11s ease-in-out 2.4s infinite alternate; }
+  }
+
+  @keyframes bladeOpen {
+    0%   { transform: translate(-50%,-50%) scale(1) rotate(0deg); opacity: 1; }
+    65%  { opacity: 1; }
+    100% { transform: translate(-50%,-50%) scale(0.05) rotate(58deg); opacity: 0; }
+  }
+  @keyframes flashPulse {
+    0%, 100% { opacity: 0; }
+    50%      { opacity: 1; }
+  }
+  @keyframes overlayHide {
+    to { opacity: 0; visibility: hidden; }
+  }
+  @keyframes fadeInUp {
+    from { opacity: 0; transform: translateY(10px); }
+    to   { opacity: 1; transform: translateY(0); }
+  }
+  @keyframes logoSettle {
+    from { transform: scale(1.045); }
+    to   { transform: scale(1); }
+  }
+  @keyframes sweepDrift {
+    0%   { opacity: 0.5; transform: translate(-6%, -4%) rotate(0deg); }
+    100% { opacity: 0.9; transform: translate(6%, 4%) rotate(0deg); }
+  }
+
+  /* Login button sheen sweep on hover, in place of a generic scale/shadow */
+  .studio-btn { position: relative; overflow: hidden; isolation: isolate; }
+  .studio-btn::before {
+    content: ""; position: absolute; inset: 0; z-index: -1;
+    background: linear-gradient(100deg, transparent 30%, rgba(201,162,39,0.55) 50%, transparent 70%);
+    transform: translateX(-120%);
+    transition: transform 0.65s cubic-bezier(0.2,0.8,0.2,1);
+  }
+  .studio-btn:hover::before { transform: translateX(120%); }
+  .studio-btn:hover { box-shadow: 0 0 0 1px rgba(201,162,39,0.5), 0 8px 30px rgba(201,162,39,0.18); }
+
+  .logo-frame { will-change: transform; }
+</style>
+</head>
+<body class="bg-brand text-white flex flex-col min-h-screen bg-grain overflow-hidden">
+
+  <div class="ambient-sweep"></div>
+
+  <!-- ================= INTRO IRIS-WIPE ================= -->
+  <div class="intro-overlay-wrap" aria-hidden="true">
+    <svg viewBox="0 0 100 100" preserveAspectRatio="none">
+      <defs>
+        <mask id="irisMask" x="-50%" y="-50%" width="200%" height="200%">
+          <rect x="0" y="0" width="100" height="100" fill="white"/>
+          <circle cx="50" cy="50" r="0" fill="black">
+            <animate attributeName="r" from="0" to="90" dur="1.4s" begin="0.15s"
+                     fill="freeze" calcMode="spline" keySplines="0.16 1 0.3 1" keyTimes="0;1"/>
+          </circle>
+        </mask>
+      </defs>
+      <rect x="0" y="0" width="100" height="100" fill="#0a0a0a" mask="url(#irisMask)"/>
+    </svg>
+    <div class="intro-blades"></div>
+    <div class="intro-flash"></div>
+  </div>
+
+  <!-- ================= HEADER ================= -->
+  <header class="site-header relative z-20 px-6 py-6 sm:px-12 flex items-center justify-between w-full">
+    <a href="index.html" class="flex items-center gap-3 opacity-90 hover:opacity-100 transition-opacity">
+      <img src="assets/logo1.png" alt="Memories Icon" class="h-7 sm:h-8 w-auto object-contain" onerror="this.style.display='none';" />
+      <span class="font-display text-sm font-semibold tracking-widest text-white uppercase hidden sm:block">Memories Photography</span>
+    </a>
+
+    <a href="login.html" class="studio-btn inline-flex items-center justify-center px-6 py-2.5 text-xs font-semibold uppercase tracking-wider text-black bg-white rounded-full transition-colors duration-300">
+      Studio Login
+      <svg class="ml-2 w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M14 5l7 7m0 0l-7 7m7-7H3"></path></svg>
+    </a>
+  </header>
+
+  <!-- ================= MAIN CENTER LOGO ================= -->
+  <main class="flex-1 flex flex-col items-center justify-center relative z-10 px-6 text-center">
+
+    <div class="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 w-[250px] h-[250px] sm:w-[400px] sm:h-[400px] bg-white opacity-[0.02] blur-[80px] rounded-full pointer-events-none"></div>
+
+    <div class="logo-frame flex justify-center w-full">
+      <img
+        src="assets/logo.jpg"
+        alt="Memories Photography Coimbatore Nagercoil"
+        class="max-w-[280px] sm:max-w-md md:max-w-lg w-full h-auto object-contain drop-shadow-2xl"
+        onerror="this.onerror=null; this.src='assets/logo.png';"
+      />
+    </div>
+
+    <p class="logo-tagline mt-6 max-w-sm text-xs sm:text-sm text-gray-400 font-light tracking-wide">
+      Every client, every shoot, every memory — kept in one place, just for you.
+    </p>
+  </main>
+
+  <!-- ================= FOOTER ================= -->
+  <footer class="site-footer relative z-20 pb-6 pt-4 w-full">
+    <div class="max-w-7xl mx-auto px-6 text-center flex flex-col sm:flex-row items-center justify-center gap-1 sm:gap-2">
+      <p class="text-[11px] sm:text-xs text-gray-500 font-medium tracking-widest uppercase">
+        © 2026 Memories Photography
+      </p>
+      <span class="hidden sm:inline text-gray-700">|</span>
+      <p class="text-[11px] sm:text-xs text-gray-500 font-medium tracking-widest uppercase mt-1 sm:mt-0">
+        Developed by
+        <a href="https://deva3019.netlify.app" target="_blank" class="text-gray-300 hover:text-white transition-colors border-b border-gray-700 hover:border-white pb-0.5 ml-1">
+          Deva Veera Kumaran
+        </a>
+      </p>
+    </div>
+  </footer>
+
+  <script>
+    // Subtle cursor-tracked parallax on the logo — skipped for touch input
+    // and for anyone who has asked their OS to reduce motion.
+    (function () {
+      var prefersReducedMotion = window.matchMedia('(prefers-reduced-motion: reduce)').matches;
+      var hasHover = window.matchMedia('(hover: hover)').matches;
+      if (prefersReducedMotion || !hasHover) return;
+
+      var frame = document.querySelector('.logo-frame');
+      if (!frame) return;
+
+      var targetX = 0, targetY = 0, currentX = 0, currentY = 0;
+
+      window.addEventListener('mousemove', function (e) {
+        var cx = window.innerWidth / 2;
+        var cy = window.innerHeight / 2;
+        targetX = ((e.clientX - cx) / cx) * -6;
+        targetY = ((e.clientY - cy) / cy) * -6;
+      });
+
+      function tick() {
+        currentX += (targetX - currentX) * 0.06;
+        currentY += (targetY - currentY) * 0.06;
+        frame.style.transform = 'translate(' + currentX.toFixed(2) + 'px,' + currentY.toFixed(2) + 'px)';
+        requestAnimationFrame(tick);
+      }
+      requestAnimationFrame(tick);
+    })();
+  </script>
+
+</body>
+</html>
