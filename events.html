@@ -335,14 +335,11 @@
   </div>
 </div>
 
-<!-- ================= MODAL: EVENT DETAILS (RESPONSIVE FIX) ================= -->
+<!-- ================= MODAL: EVENT DETAILS ================= -->
 <div id="modal-event-details" class="fixed inset-0 z-50 hidden">
   <div class="modal-backdrop absolute inset-0 bg-black/50 backdrop-blur-xs id-close-details"></div>
   
-  <!-- Changed padding to p-2 sm:p-6 for mobile bounds -->
   <div class="relative w-full h-full flex items-center justify-center p-2 sm:p-6 overflow-hidden">
-    
-    <!-- Added max-w-full and min-w-0 to prevent flex blowing out container -->
     <div class="panel bg-white w-full max-w-3xl my-auto shadow-2xl rounded-xl max-h-[95vh] flex flex-col z-10 min-w-0">
       
       <div class="p-4 sm:px-5 sm:py-4 border-b border-gray-200 flex flex-col sm:flex-row sm:items-start justify-between shrink-0 bg-gray-50/50 rounded-t-xl gap-3">
@@ -366,6 +363,18 @@
       <!-- Scrollable Body with break-words to prevent horizontal scrolling -->
       <div class="p-4 sm:p-5 overflow-y-auto space-y-5 text-xs flex-1 min-w-0 break-words">
         
+        <!-- THE MISSING STATUS DROPDOWN HAS BEEN RESTORED HERE -->
+        <div class="p-3 bg-white rounded-lg flex items-center justify-between gap-3 border border-gray-200 shadow-sm min-w-0">
+          <span class="text-gray-600 font-semibold tracking-wide uppercase text-[10px] truncate">Pipeline Status:</span>
+          <select id="det-quick-status" class="input-control select-control text-xs font-bold text-black border-2 border-gray-300 shrink-0">
+            <option value="Enquiry">Enquiry</option>
+            <option value="Tentative">Tentative</option>
+            <option value="Confirmed">Confirmed</option>
+            <option value="Completed">Completed</option>
+            <option value="Cancelled">Cancelled</option>
+          </select>
+        </div>
+
         <div class="grid grid-cols-1 sm:grid-cols-2 gap-3 sm:gap-4">
           <div class="panel p-3 sm:p-4 bg-gray-50/50 border-gray-100 min-w-0">
             <p class="text-[9px] sm:text-[10px] uppercase tracking-widest font-bold text-gray-400 mb-2">Client Details</p>
@@ -404,7 +413,6 @@
                 <span class="text-gray-400 text-[8px] sm:text-[9px] uppercase tracking-wider font-bold block">Total</span>
                 <span class="text-xs font-bold mt-1 block truncate" id="det-total">₹0</span>
               </div>
-              <!-- NEW: Payment mode displayed here -->
               <div class="p-2 border border-gray-200 rounded-lg text-center bg-white shadow-sm flex flex-col justify-center">
                 <span class="text-gray-400 text-[8px] sm:text-[9px] uppercase tracking-wider font-bold block">Adv <span id="det-pay-mode" class="text-emerald-600 ml-0.5 tracking-normal"></span></span>
                 <span class="text-xs font-bold text-emerald-700 mt-1 block truncate" id="det-advance">₹0</span>
