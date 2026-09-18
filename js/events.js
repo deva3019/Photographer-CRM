@@ -57,6 +57,13 @@ function formatTime12h(time24) {
   return `${hours}:${m} ${ampm}`;
 }
 
+// Format multi-day events cleanly
+function formatEventDate(start, end) {
+  if (!start) return "TBD";
+  if (!end || start === end) return start;
+  return `${start} to ${end}`;
+}
+
 let eventsCache = [];
 let clientsCache = [];
 let crewCache = [];
@@ -143,7 +150,6 @@ function renderEventsTable() {
     if (selectedStatus !== "all" && (item.status || "").toLowerCase() !== selectedStatus.toLowerCase()) return false;
     if (selectedType && selectedType !== "all" && !(item.eventType || item.type || "").toLowerCase().includes(selectedType)) return false;
     
-    // NEW: Date Range Filter Logic
     if (fromDate && item.date < fromDate) return false;
     if (toDate && item.date > toDate) return false;
 
@@ -166,11 +172,13 @@ function renderEventsTable() {
   tbody.innerHTML = filtered.map(e => {
     const total = Number(e.totalAmount || 0);
     const balance = total - Number(e.advance || 0);
+    const dateDisplay = formatEventDate(e.date, e.endDate);
+    
     return `
       <tr class="hover:bg-gray-50/75 transition-colors cursor-pointer" onclick="window.openEventDetails('${e.id}')">
         <td class="py-3 px-4"><p class="font-bold text-gray-900">${e.eventName || e.client || "Untitled"}</p><p class="text-xs text-gray-500 font-medium">${e.clientName || ""} ${e.phone ? `· ${e.phone}` : ""}</p></td>
         <td class="py-3 px-4 text-xs font-bold text-gray-700">${e.eventType || e.type || "—"}</td>
-        <td class="py-3 px-4"><p class="text-xs font-bold text-gray-900">${e.date || "TBD"}</p><p class="text-[11px] text-gray-500">${formatTime12h(e.startTime || e.time) || "Time TBD"}</p></td>
+        <td class="py-3 px-4"><p class="text-xs font-bold text-gray-900">${dateDisplay}</p><p class="text-[11px] text-gray-500">${formatTime12h(e.startTime || e.time) || "Time TBD"}</p></td>
         <td class="py-3 px-4 text-xs max-w-[150px] truncate font-medium text-gray-800">${e.venue || "—"}</td>
         <td class="py-3 px-4">${getStatusBadge(e.status)}</td>
         <td class="py-3 px-4 text-right"><p class="text-xs font-bold text-gray-900">₹${total.toLocaleString()}</p><p class="text-[11px] font-bold ${balance > 0 ? 'text-amber-700' : 'text-emerald-700'}">Bal: ₹${balance.toLocaleString()}</p></td>
@@ -198,10 +206,11 @@ window.openEventDetails = function(eventId) {
   document.getElementById("det-client-email").textContent = item.email || "—";
 
   const timeDisplay = formatTime12h(item.startTime || item.time) + (item.endTime ? ` - ${formatTime12h(item.endTime)}` : "");
-  document.getElementById("det-date-time").textContent = `${item.date || "Date TBD"} ${timeDisplay ? `(${timeDisplay})` : ""}`;
+  const dateDisplay = formatEventDate(item.date, item.endDate);
+  document.getElementById("det-date-time").textContent = `${dateDisplay} ${timeDisplay ? `(${timeDisplay})` : ""}`;
+  
   document.getElementById("det-venue").textContent = item.venue || "Venue not set";
   document.getElementById("det-location").textContent = item.location || "Coimbatore";
-
   document.getElementById("det-package-name").textContent = item.package || "Custom Package";
   
   const sContainer = document.getElementById("det-services-pills");
@@ -289,6 +298,7 @@ function openEventForm(eventData = null) {
     document.getElementById("form-event-name").value = eventData.eventName || eventData.client || "";
     document.getElementById("form-event-type").value = eventData.eventType || eventData.type || "";
     document.getElementById("form-event-date").value = eventData.date || "";
+    document.getElementById("form-event-end-date").value = eventData.endDate || ""; // Set To Date
     document.getElementById("form-event-start-time").value = eventData.startTime || eventData.time || "";
     document.getElementById("form-event-end-time").value = eventData.endTime || "";
     document.getElementById("form-event-venue").value = eventData.venue || "";
@@ -316,7 +326,7 @@ function openEventForm(eventData = null) {
 
     inTotal.value = eventData.totalAmount || 0;
     inAdv.value = eventData.advance || 0;
-    document.getElementById("form-payment-mode").value = eventData.paymentMode || "Cash"; // Pre-fill new field
+    document.getElementById("form-payment-mode").value = eventData.paymentMode || "Cash"; 
     calcBal();
 
     document.getElementById("form-timeline").value = eventData.timeline || "";
@@ -327,6 +337,7 @@ function openEventForm(eventData = null) {
     eventForm.reset();
     document.getElementById("form-event-id").value = "";
     document.getElementById("form-event-date").value = new Date().toISOString().split('T')[0];
+    document.getElementById("form-event-end-date").value = "";
     document.getElementById("form-event-location").value = "Coimbatore";
     renderCrewCheckboxes([]); 
     calcBal();
@@ -344,6 +355,7 @@ eventForm.addEventListener("submit", async (e) => {
     eventName: document.getElementById("form-event-name").value.trim(),
     eventType: document.getElementById("form-event-type").value.trim(),
     date: document.getElementById("form-event-date").value,
+    endDate: document.getElementById("form-event-end-date").value || null, // Save To Date
     startTime: document.getElementById("form-event-start-time").value,
     endTime: document.getElementById("form-event-end-time").value,
     venue: document.getElementById("form-event-venue").value.trim(),
@@ -367,7 +379,7 @@ eventForm.addEventListener("submit", async (e) => {
     assignedCrew: selectedCrew,
     totalAmount: parseFloat(inTotal.value) || 0,
     advance: parseFloat(inAdv.value) || 0,
-    paymentMode: document.getElementById("form-payment-mode").value, // Save new field
+    paymentMode: document.getElementById("form-payment-mode").value,
     timeline: document.getElementById("form-timeline").value.trim(),
     notes: document.getElementById("form-notes").value.trim(),
     updatedAt: serverTimestamp()
@@ -464,7 +476,7 @@ document.getElementById("btn-open-invoice").addEventListener("click", () => {
     <div class="grid grid-cols-3 gap-4 mb-4 text-xs">
       <div>
         <p class="font-bold text-gray-400 uppercase tracking-widest text-[9px]">Date & Time</p>
-        <p>${item.date}</p>
+        <p>${formatEventDate(item.date, item.endDate)}</p>
         <p class="text-gray-600">${timeDisplay || "Time TBD"}</p>
       </div>
       <div class="col-span-2">
@@ -503,7 +515,7 @@ document.getElementById("btn-whatsapp-invoice").addEventListener("click", () => 
 _Booking Confirmation_
 
 *Event:* ${item.eventName || item.clientName}
-*Date:* ${item.date}
+*Date:* ${formatEventDate(item.date, item.endDate)}
 *Venue:* ${item.venue}
 *Package:* ${document.getElementById("inv-package").innerText}
 
